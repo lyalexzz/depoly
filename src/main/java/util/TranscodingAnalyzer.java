@@ -1,11 +1,20 @@
+package util;
+
 import com.jcraft.jsch.*;
 import vo.SshConfiguration;
 
+import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 
+/**
+ * @program: TranscodingAnalyzer
+ * @description: 链接操作类
+ * @author: LiYu
+ * @create: 2021-09-10 18:20
+ **/
 public class TranscodingAnalyzer {
 
     private ChannelSftp channelSftp;
@@ -13,13 +22,6 @@ public class TranscodingAnalyzer {
      * 链接对话
      */
     private Session session = null;
-    /**
-     * 超时时间
-     */
-    private int timeout = 60000;
-
-    public ArrayList<String> stdout = new ArrayList<>();
-
 
     public TranscodingAnalyzer(SshConfiguration conf) throws JSchException {
         //创建JSch对象
@@ -33,6 +35,7 @@ public class TranscodingAnalyzer {
         //为Session对象设置properties
         session.setConfig(config);
         //设置超时
+        int timeout = 60000;
         session.setTimeout(timeout);
         //通过Session建立连接
         session.connect();
@@ -54,9 +57,8 @@ public class TranscodingAnalyzer {
         Vector fileList;
         List<String> fileNameList = new ArrayList<String>();
         fileList = channelSftp.ls(directory);
-        Iterator it = fileList.iterator();
-        while (it.hasNext()) {
-            String fileName = ((ChannelSftp.LsEntry) it.next()).getFilename();
+        for (Object o : fileList) {
+            String fileName = ((ChannelSftp.LsEntry) o).getFilename();
             if (".".equals(fileName) || "..".equals(fileName)) {
                 continue;
             }
@@ -76,13 +78,13 @@ public class TranscodingAnalyzer {
     /**
      * 查看文件
      *
-     * @param src
-     * @param filename
-     * @return
-     * @throws JSchException
-     * @throws SftpException
-     * @throws InterruptedException
-     * @throws IOException
+     * @param src 路径
+     * @param filename 文件名
+     * @return 文件内容
+     * @throws JSchException 异常
+     * @throws SftpException 异常
+     * @throws InterruptedException 异常
+     * @throws IOException 异常
      */
 
     public String catFile(String src, String filename) throws JSchException, SftpException, InterruptedException, IOException {
@@ -91,43 +93,36 @@ public class TranscodingAnalyzer {
         channelSftp = (ChannelSftp) session.openChannel("sftp");
         //连接通道
         channelSftp.connect();
-        StringBuffer sb = new StringBuffer();
-        try {
-            Channel channel = session.openChannel("exec");
-            ChannelExec channelExec = (ChannelExec) channel;
-            String cmdGet = "cat " + filename;
-            channelExec.setCommand("cd " + src + ";" + cmdGet);
-            channelExec.setInputStream(null);
-            BufferedReader input = new BufferedReader(new InputStreamReader
-                    (channelExec.getInputStream()));
-            channelExec.connect();
-            String line = "";
-            while ((line = input.readLine()) != null) {
-                sb.append(line + "\n");
-            }
-            System.out.println(sb);
-            // 关闭通道
-            channelExec.disconnect();
-            input.close();
-            //关闭session
-            session.disconnect();
-            channelSftp.quit();
-        } catch (Exception e) {
-            throw e;
+        StringBuilder sb = new StringBuilder();
+        Channel channel = session.openChannel("exec");
+        ChannelExec channelExec = (ChannelExec) channel;
+        String cmdGet = "cat " + filename;
+        channelExec.setCommand("cd " + src + ";" + cmdGet);
+        channelExec.setInputStream(null);
+        BufferedReader input = new BufferedReader(new InputStreamReader
+                (channelExec.getInputStream()));
+        channelExec.connect();
+        String line = "";
+        while ((line = input.readLine()) != null) {
+            sb.append(line).append("\n");
         }
+        // 关闭通道
+        channelExec.disconnect();
+        input.close();
+        //关闭session
+        session.disconnect();
+        channelSftp.quit();
         return sb.toString();
-
     }
 
     /**
      * 执行shell命令
      *
-     * @param command
-     * @return
+     * @param command 命令
+     * @param news 消息列表
      */
-    public int execute(final String command) {
+    public void execute(final String command, JTextArea news) {
         int returnCode = 0;
-        JSch jsch = new JSch();
         try {
             //打开通道，设置通道类型，和执行的命令
             Channel channel = session.openChannel("exec");
@@ -139,8 +134,14 @@ public class TranscodingAnalyzer {
             channelExec.connect();
             //接收远程服务器执行命令的结果
             String line;
+            int i = 0;
             while ((line = input.readLine()) != null) {
-                stdout.add(line);
+                if(i == 0){
+                    news.setText(command+"\n"+line);
+                }else{
+                    news.setText(news.getText()+"\n"+line);
+                }
+                i++;
             }
             input.close();
             // 得到returnCode
@@ -150,9 +151,7 @@ public class TranscodingAnalyzer {
             // 关闭通道
             channelExec.disconnect();
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        return returnCode;
     }
 }
