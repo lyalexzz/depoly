@@ -57,7 +57,7 @@ public class Deploy {
         userName.setPreferredSize(dmUserName);
         jf.add(userName);
         jf.add(new JLabel("服务器密码:"));
-        javax.swing.JTextField pwd = new javax.swing.JTextField("LiYu070203...");
+        javax.swing.JTextField pwd = new javax.swing.JTextField("");
         java.awt.Dimension dmPwd = new java.awt.Dimension(250, 30);
         pwd.setPreferredSize(dmPwd);
         jf.add(pwd);
