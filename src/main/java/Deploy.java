@@ -27,7 +27,7 @@ public class Deploy {
         //窗体类
         javax.swing.JFrame jf = new javax.swing.JFrame();
         //窗体名称
-        jf.setTitle("脚本执行器");
+        jf.setTitle("微微微微微微微微型远程宝塔");
         //窗体大小（具体值跟电脑显示器的像素有关，可调整到合适大小）
         jf.setSize(1000, 700);
         //设置退出进程的方法

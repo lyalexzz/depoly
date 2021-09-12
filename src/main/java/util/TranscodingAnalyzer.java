@@ -4,9 +4,7 @@ import com.jcraft.jsch.*;
 import vo.SshConfiguration;
 
 import javax.swing.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -154,4 +152,98 @@ public class TranscodingAnalyzer {
             e.printStackTrace();
         }
     }
+
+    /**
+     * 下载单个文件，如果指定文件名，则下载到文件名否则保持原有文件名
+     *
+     * @param remoteFilePath    远程文件路径 /tmp/xxx.txt || xxx.txt.zip
+     * @param localFilePath     本地文件路径 如 D:\\xxx.txt
+     * @return 下载的文件
+     */
+    public File downloadFile(String remoteFilePath, String localFilePath) {
+        String remoteFileName = "";
+        // 远端目录确定以 / 作为目录格式
+        String rFileSeparator = "/";
+        int rDirNameSepIndex = remoteFilePath.lastIndexOf(rFileSeparator) + 1;
+        String rDir = remoteFilePath.substring(0, rDirNameSepIndex);
+        remoteFileName = remoteFilePath.substring(rDirNameSepIndex);
+        if(localFilePath.endsWith(File.separator)) {
+            localFilePath = localFilePath + (localFilePath.endsWith(File.separator) ? remoteFileName : "/" + remoteFileName);
+        }
+        File file = null;
+        OutputStream output = null;
+        try {
+            file = new File(localFilePath);
+            if (file.exists()) {
+                file.delete();
+            }
+            file.createNewFile();
+            channelSftp.cd(rDir);
+            output = new FileOutputStream(file);
+            channelSftp.get(remoteFileName, output);
+        } catch (SftpException e) {
+        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            close();
+        }
+
+        return file;
+    }
+
+    /**
+     * 上传单个文件，如果指正下载文件名则使用，否则保留原有文件名
+     *
+     * @param remoteFilePath    远程文件路径 /tmp/xxx.txt ||xxx.txt.zip
+     * @param uploadFilePath    要上传的文件 如：D:\\test\\xxx.txt
+     */
+    public void uploadFile(String remoteFilePath, String uploadFilePath) {
+        FileInputStream in = null;
+        String remoteFileName = "";
+        String remoteDir = remoteFilePath;
+        String localFileName = "";
+        // 远端目录确定以 / 作为目录格式
+        String rFileSeparator = "/";
+        if(remoteFilePath.endsWith(rFileSeparator)) {
+            localFileName = uploadFilePath.substring(uploadFilePath.lastIndexOf(File.separator) + 1);
+            remoteFileName = localFileName;
+        } else {
+            int fileNameDirSep = remoteFilePath.lastIndexOf(rFileSeparator) + 1;
+            remoteDir = remoteFilePath.substring(0, fileNameDirSep);
+            remoteFileName = remoteFilePath.substring(fileNameDirSep);
+        }
+        try {
+            channelSftp.cd(remoteDir);
+        } catch (SftpException e) {
+            try {
+                channelSftp.mkdir(remoteDir);
+                channelSftp.cd(remoteDir);
+            } catch (SftpException e1) {
+                throw new RuntimeException("ftp创建文件路径失败" + remoteDir);
+            }
+        }
+        File file = new File(uploadFilePath);
+        try {
+            in = new FileInputStream(file);
+            channelSftp.put(in, remoteFileName);
+        } catch (FileNotFoundException e) {
+        } catch (SftpException e) {
+        } finally {
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException e) {
+                }
+            }
+            close();
+        }
+    }
+
 }
